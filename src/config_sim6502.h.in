@@ -1,0 +1,9 @@
+#ifndef CONFIG_SIM6502_H_INCLUDED
+#define CONFIG_SIM6502_H_INCLUDED
+
+#define SIM6502_VERSION_STR     @version_str@
+#define SIM6502_VERSION_MAJOR   @version_major@
+#define SIM6502_VERSION_MINOR   @version_minor@
+#define SIM6502_VERSION_PATCH   @version_patch@
+
+#endif

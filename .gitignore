@@ -1,5 +1,5 @@
 # Meson stuff
-build/
+build-*/
 
 # Prerequisites
 *.d
