@@ -1,6 +1,9 @@
 # Meson stuff
 build-*/
 
+# Vim swapfiles
+*.swp
+
 # Prerequisites
 *.d
 
