@@ -18,8 +18,12 @@ configure_file(
 )
 config_inc = include_directories('.')
 
+cc = meson.get_compiler('c')
+m_dep = cc.find_library('m', required : false)
+
 executable('sim6502',
-    sources: srcs,
+    sources : srcs,
     c_args : cargs,
-    include_directories : [config_inc]
+    include_directories : [config_inc],
+    dependencies : m_dep
 )
