@@ -1,7 +1,8 @@
 project('sim6502', 'c', default_options : ['c_std=c89', 'werror=true'])
 
 srcs = [
-    'src/sim6502.c'
+    'src/sim6502.c',
+    'src/main.c',
 ]
 
 cargs = ['-pedantic-errors', '-Wall', '-Wextra', '-fno-strict-aliasing']
