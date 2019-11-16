@@ -17,12 +17,13 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
+#include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "sim6502.h"
 
-#include <assert.h>
-#include <stdio.h>
 
 /*********************************************************************
  * Some debug macros
@@ -34,6 +35,7 @@
 #define DEBUG_PRINT_1(S, A) printf(S, A)
 #define DEBUG_PRINT_0(S) printf("%s", S)
 #endif
+
 
 /*********************************************************************
  * Bit and numerical manipulation functions
@@ -48,8 +50,8 @@
  */
 /* TODO: use this function somewhere or remove it */
 #if 0
-static uint16_t m6502_page_of(uint16_t addr) {
-    return addr >> 2;
+static uint8_t m6502_page_of(uint16_t addr) {
+    return (uint8_t)BYTE1(addr);
 }
 #endif
 
@@ -482,13 +484,13 @@ static int m6502_compute_arg_address(
         break;
     case ADM_INDIRECT:
     {
-        uint8_t indirect_buffer[2] = {0, 0};
         uint16_t contained_args = m6502_contain_16(instr->args);
 
         if (BYTE0(contained_args) == 0xFF
                 && (machine->config.flags & M6502_CFG_BUGGY_JMP_INDIRECT))
         {
-            error = m6502_load_byte(machine, contained_args, indirect_buffer);
+            uint8_t indirect_buffer[2] = {0, 0};
+            error = m6502_load_byte(machine, contained_args, &indirect_buffer[0]);
             if (error) {
                 break;
             }
@@ -570,6 +572,8 @@ static int instr_impl_st_template(
     }
 
     machine->regs.pc++;
+
+    return E6502_OK;
 }
 
 static int instr_impl_lda(
@@ -771,7 +775,7 @@ static int m6502_begin_interrupt_generic(struct m6502_machine* machine, int is_m
     /* The docs aren't clear but I think this also happens for NMIs */
     machine->regs.p &= M6502_FLAG_I;
 
-    return m6502_load_16(machine, (is_maskable ? M6502_NMI_PC_ADDR : M6502_IRQ_PC_ADDR), &machine->regs.pc);
+    return m6502_load_16(machine, (is_maskable ? M6502_IRQ_PC_ADDR : M6502_NMI_PC_ADDR), &machine->regs.pc);
 
 ERROR:
     machine->error = error;
