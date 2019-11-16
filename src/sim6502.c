@@ -528,102 +528,87 @@ static int m6502_compute_arg_address(
     return error;
 }
 
-/* common implementation for LDA, LDX, LDY */
-static int instr_impl_ld_template(
-    struct m6502_machine* machine,
-    const struct m6502_decoded_instr* instr,
-    uint8_t* reg)
-{
-    uint8_t newval = 0;
-    int error = E6502_OK;
-
-    if (instr->addr_mode == ADM_IMMEDIATE) {
-        newval = instr->args[0];
-    } else {
-        uint16_t newval_addr;
-        error = m6502_compute_arg_address(machine, instr, &newval_addr);
-        if (error) {
-            return error;
-        }
-        error = m6502_load_byte(machine, newval_addr, &newval);
-        if (error) {
-            return error;
-        }
-    }
-    *reg = newval;
-    machine->regs.pc++;
-    return E6502_OK;
+#define INSTR_IMPL_LD_TEMPLATE(NAME, REG) static int NAME( \
+    struct m6502_machine* machine, \
+    const struct m6502_decoded_instr* instr) \
+{ \
+    uint8_t newval = 0; \
+    int error = E6502_OK; \
+    if (instr->addr_mode == ADM_IMMEDIATE) { \
+        newval = instr->args[0]; \
+    } else { \
+        uint16_t newval_addr; \
+        error = m6502_compute_arg_address(machine, instr, &newval_addr); \
+        if (error) { \
+            return error; \
+        } \
+        error = m6502_load_byte(machine, newval_addr, &newval); \
+        if (error) { \
+            return error; \
+        } \
+    } \
+    machine->regs.REG = newval; \
+    machine->regs.pc++; \
+    return E6502_OK; \
 }
 
-/* common implementation for STA, STX, STY */
-static int instr_impl_st_template(
-    struct m6502_machine* machine,
-    const struct m6502_decoded_instr* instr,
-    uint8_t reg_val)
-{
-    uint16_t arg_addr;
-    int error = m6502_compute_arg_address(machine, instr, &arg_addr);
-    if (error) {
-        return error;
-    }
-    error = m6502_store_byte(machine, arg_addr, reg_val);
-    if (error) {
-        return error;
-    }
+INSTR_IMPL_LD_TEMPLATE(instr_impl_lda, a)
+INSTR_IMPL_LD_TEMPLATE(instr_impl_ldx, x)
+INSTR_IMPL_LD_TEMPLATE(instr_impl_ldy, y)
 
-    machine->regs.pc++;
+#undef INSTR_IMPL_LD_TEMPLATE
 
-    return E6502_OK;
+#define INSTR_IMPL_ST_TEMPLATE(NAME, REG) static int NAME(\
+    struct m6502_machine* machine, \
+    const struct m6502_decoded_instr* instr \
+) \
+{ \
+    uint16_t arg_addr; \
+    int error = m6502_compute_arg_address(machine, instr, &arg_addr); \
+    if (error) { \
+        return error; \
+    } \
+    error = m6502_store_byte(machine, arg_addr, machine->regs.REG); \
+    if (error) { \
+        return error; \
+    } \
+    machine->regs.pc++; \
+    return E6502_OK; \
 }
 
-static int instr_impl_lda(
-    struct m6502_machine* machine,
-    const struct m6502_decoded_instr* instr)
-{
-    return instr_impl_ld_template(machine, instr, &machine->regs.a);
+INSTR_IMPL_ST_TEMPLATE(instr_impl_sta, a)
+INSTR_IMPL_ST_TEMPLATE(instr_impl_stx, x)
+INSTR_IMPL_ST_TEMPLATE(instr_impl_sty, y)
+
+#undef INSTR_IMPL_ST_TEMPLATE
+
+/* macro for implementing the transfer instructions succinctly */
+#define INSTR_IMPL_TXX_TEMPLATE(NAME, SRC, DEST) static int NAME( \
+struct m6502_machine* machine, \
+const struct m6502_decoded_instr* instr) \
+{ \
+    (void)instr; \
+    machine->regs.DEST = machine->regs.SRC; \
+    return E6502_OK; \
 }
 
-static int instr_impl_ldx(
-    struct m6502_machine* machine,
-    const struct m6502_decoded_instr* instr)
-{
-    return instr_impl_ld_template(machine, instr, &machine->regs.x);
-}
+INSTR_IMPL_TXX_TEMPLATE(instr_impl_tax, a, x)
+INSTR_IMPL_TXX_TEMPLATE(instr_impl_tay, a, y)
+INSTR_IMPL_TXX_TEMPLATE(instr_impl_txa, x, a)
+INSTR_IMPL_TXX_TEMPLATE(instr_impl_tya, y, a)
+INSTR_IMPL_TXX_TEMPLATE(instr_impl_tsx, sp, x)
+INSTR_IMPL_TXX_TEMPLATE(instr_impl_txs, x, sp)
 
-static int instr_impl_ldy(
-    struct m6502_machine* machine,
-    const struct m6502_decoded_instr* instr)
-{
-    return instr_impl_ld_template(machine, instr, &machine->regs.y);
-}
+#undef INSTR_IMPL_TXX_TEMPLATE
 
-static int instr_impl_sta(
-    struct m6502_machine* machine,
-    const struct m6502_decoded_instr* instr)
-{
-    return instr_impl_st_template(machine, instr, machine->regs.a);
-}
-
-static int instr_impl_stx(
-    struct m6502_machine* machine,
-    const struct m6502_decoded_instr* instr)
-{
-    return instr_impl_st_template(machine, instr, machine->regs.x);
-}
-
-static int instr_impl_sty(
-    struct m6502_machine* machine,
-    const struct m6502_decoded_instr* instr)
-{
-    return instr_impl_st_template(machine, instr, machine->regs.y);
-}
 
 static instr_function_t instr_jump_table[OPG_COUNT] = {
     instr_impl_lda, instr_impl_ldx, instr_impl_ldy,
     instr_impl_sta, instr_impl_stx, instr_impl_sty,
 
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL, NULL, NULL,
+    instr_impl_tax, instr_impl_tay, instr_impl_txa, instr_impl_tya,
+
+    instr_impl_tsx, instr_impl_txs, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL,
