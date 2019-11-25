@@ -359,8 +359,6 @@ static int m6502_push_16(struct m6502_machine* machine, uint16_t w) {
 
 /* WARNING: does not null check */
 /* error flag is unaffected */
-/* TODO: use this function somewhere or remove it */
-#if 0
 static int m6502_pull_byte(struct m6502_machine* machine, uint8_t* b) {
     int ret = m6502_load_byte(machine, machine->regs.sp + M6502_STACK_OFS, b);
     if (!ret) {
@@ -368,7 +366,6 @@ static int m6502_pull_byte(struct m6502_machine* machine, uint8_t* b) {
     }
     return ret;
 }
-#endif
 
 /* WARNING: does not null check */
 /* pulls low byte first */
@@ -528,6 +525,7 @@ static int m6502_compute_arg_address(
     return error;
 }
 
+/* macro for implementing the load instructions succinctly */
 #define INSTR_IMPL_LD_TEMPLATE(NAME, REG) static int NAME( \
     struct m6502_machine* machine, \
     const struct m6502_decoded_instr* instr) \
@@ -558,10 +556,11 @@ INSTR_IMPL_LD_TEMPLATE(instr_impl_ldy, y)
 
 #undef INSTR_IMPL_LD_TEMPLATE
 
+
+/* macro for implementing the store instructions succinctly */
 #define INSTR_IMPL_ST_TEMPLATE(NAME, REG) static int NAME(\
     struct m6502_machine* machine, \
-    const struct m6502_decoded_instr* instr \
-) \
+    const struct m6502_decoded_instr* instr ) \
 { \
     uint16_t arg_addr; \
     int error = m6502_compute_arg_address(machine, instr, &arg_addr); \
@@ -582,6 +581,7 @@ INSTR_IMPL_ST_TEMPLATE(instr_impl_sty, y)
 
 #undef INSTR_IMPL_ST_TEMPLATE
 
+
 /* macro for implementing the transfer instructions succinctly */
 #define INSTR_IMPL_TXX_TEMPLATE(NAME, SRC, DEST) static int NAME( \
 struct m6502_machine* machine, \
@@ -589,6 +589,7 @@ const struct m6502_decoded_instr* instr) \
 { \
     (void)instr; \
     machine->regs.DEST = machine->regs.SRC; \
+    machine->regs.pc++; \
     return E6502_OK; \
 }
 
@@ -602,13 +603,56 @@ INSTR_IMPL_TXX_TEMPLATE(instr_impl_txs, x, sp)
 #undef INSTR_IMPL_TXX_TEMPLATE
 
 
+static int instr_impl_pha(
+    struct m6502_machine* machine,
+    const struct m6502_decoded_instr* instr)
+{
+    int ret = m6502_push_byte(machine, machine->regs.a);
+    machine->regs.pc++;
+    (void)instr;
+    return ret;
+}
+
+static int instr_impl_php(
+    struct m6502_machine* machine,
+    const struct m6502_decoded_instr* instr)
+{
+    int ret = m6502_push_byte(machine, machine->regs.p);
+    machine->regs.pc++;
+    (void)instr;
+    return ret;
+}
+
+static int instr_impl_pla(
+    struct m6502_machine* machine,
+    const struct m6502_decoded_instr* instr)
+{
+    int ret = m6502_pull_byte(machine, &machine->regs.a);
+    machine->regs.pc++;
+    (void)instr;
+    return ret;
+}
+
+static int instr_impl_plp(
+    struct m6502_machine* machine,
+    const struct m6502_decoded_instr* instr)
+{
+    int ret = m6502_pull_byte(machine, &machine->regs.p);
+    machine->regs.pc++;
+    (void)instr;
+    return ret;
+}
+
 static instr_function_t instr_jump_table[OPG_COUNT] = {
     instr_impl_lda, instr_impl_ldx, instr_impl_ldy,
     instr_impl_sta, instr_impl_stx, instr_impl_sty,
 
     instr_impl_tax, instr_impl_tay, instr_impl_txa, instr_impl_tya,
 
-    instr_impl_tsx, instr_impl_txs, NULL, NULL, NULL, NULL,
+    instr_impl_tsx, instr_impl_txs,
+    instr_impl_pha, instr_impl_php,
+    instr_impl_pla, instr_impl_plp,
+
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL,
