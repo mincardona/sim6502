@@ -33,15 +33,15 @@
 #define M6502_ADDR_SPACE_SIZE 65536
 
 /* Flag constants */
-#define M6502_FLAG_C   1u
-#define M6502_FLAG_Z   2u
-#define M6502_FLAG_I   4u
-#define M6502_FLAG_D   8u
-#define M6502_FLAG_B   16u
+#define M6502_FLAG_MASK_C   1u
+#define M6502_FLAG_MASK_Z   2u
+#define M6502_FLAG_MASK_I   4u
+#define M6502_FLAG_MASK_D   8u
+#define M6502_FLAG_MASK_B   16u
 /* flag 5 is always set, I think */
-#define M6502_FLAG_5   32u
-#define M6502_FLAG_V   64u
-#define M6502_FLAG_N   128u
+#define M6502_FLAG_MASK_5   32u
+#define M6502_FLAG_MASK_V   64u
+#define M6502_FLAG_MASK_N   128u
 
 #define E6502_OK 0
 #define E6502_UNKNOWN 1

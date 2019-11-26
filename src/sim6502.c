@@ -41,6 +41,7 @@
  * Bit and numerical manipulation functions
  *********************************************************************/
 
+/* extracts Q bits starting at position P from N */
 #define GETBITS(N, P, Q) (((N) >> (P)) & ((1 << ((Q) + 1)) - 1))
 #define BYTE0(N) ((N) & 0xFF)
 #define BYTE1(N) (((N) & 0xFF00) >> 8)
@@ -425,7 +426,7 @@ struct m6502_machine* m6502_make_machine(const struct m6502_machine_config* conf
 
     /* flag 5 is hardwired to always be set */
     /* I flag is set on startup AFAIK */
-    machine->regs.p |= M6502_FLAG_5 | M6502_FLAG_I;
+    machine->regs.p |= M6502_FLAG_MASK_5 | M6502_FLAG_MASK_I;
 
     return machine;
 }
@@ -445,6 +446,28 @@ typedef int (*instr_function_t)(
     struct m6502_machine* machine,
     const struct m6502_decoded_instr* instr
 );
+
+/*
+ * modifies the Z and N bits in old_flags based on test_value.
+ * Returns the result
+ */
+static uint8_t m6502_adjust_zn(uint8_t old_flags, uint8_t test_value) {
+    uint8_t new_flags = old_flags;
+
+    if (test_value == 0) {
+        new_flags |= M6502_FLAG_MASK_Z;
+    } else {
+        new_flags &= ~M6502_FLAG_MASK_Z;
+    }
+
+    if ((test_value & 0x70) == 0) {
+        new_flags &= ~M6502_FLAG_MASK_N;
+    } else {
+        new_flags |= M6502_FLAG_MASK_N;
+    }
+
+    return new_flags;
+}
 
 /*
  * Gets the arg address for these modes:
@@ -546,6 +569,7 @@ static int m6502_compute_arg_address(
         } \
     } \
     machine->regs.REG = newval; \
+    machine->regs.p = m6502_adjust_zn(machine->regs.p, machine->regs.REG); \
     machine->regs.pc++; \
     return E6502_OK; \
 }
@@ -589,6 +613,7 @@ const struct m6502_decoded_instr* instr) \
 { \
     (void)instr; \
     machine->regs.DEST = machine->regs.SRC; \
+    machine->regs.p = m6502_adjust_zn(machine->regs.p, machine->regs.DEST); \
     machine->regs.pc++; \
     return E6502_OK; \
 }
@@ -598,7 +623,17 @@ INSTR_IMPL_TXX_TEMPLATE(instr_impl_tay, a, y)
 INSTR_IMPL_TXX_TEMPLATE(instr_impl_txa, x, a)
 INSTR_IMPL_TXX_TEMPLATE(instr_impl_tya, y, a)
 INSTR_IMPL_TXX_TEMPLATE(instr_impl_tsx, sp, x)
-INSTR_IMPL_TXX_TEMPLATE(instr_impl_txs, x, sp)
+
+/* TXS is implemented separately because it does not modify status flags */
+static int instr_impl_txs(
+    struct m6502_machine* machine,
+    const struct m6502_decoded_instr* instr)
+{
+    (void)instr;
+    machine->regs.sp = machine->regs.x;
+    machine->regs.pc++;
+    return E6502_OK;
+}
 
 #undef INSTR_IMPL_TXX_TEMPLATE
 
@@ -628,6 +663,7 @@ static int instr_impl_pla(
     const struct m6502_decoded_instr* instr)
 {
     int ret = m6502_pull_byte(machine, &machine->regs.a);
+    machine->regs.p = m6502_adjust_zn(machine->regs.p, machine->regs.a);
     machine->regs.pc++;
     (void)instr;
     return ret;
@@ -788,7 +824,7 @@ static int m6502_begin_interrupt_generic(struct m6502_machine* machine, int is_m
         return E6502_BADSTATE;
     }
 
-    if (is_maskable && (machine->regs.p & M6502_FLAG_I)) {
+    if (is_maskable && (machine->regs.p & M6502_FLAG_MASK_I)) {
         return E6502_OK;
     }
 
@@ -802,7 +838,7 @@ static int m6502_begin_interrupt_generic(struct m6502_machine* machine, int is_m
     }
 
     /* The docs aren't clear but I think this also happens for NMIs */
-    machine->regs.p &= M6502_FLAG_I;
+    machine->regs.p &= M6502_FLAG_MASK_I;
 
     return m6502_load_16(machine, (is_maskable ? M6502_IRQ_PC_ADDR : M6502_NMI_PC_ADDR), &machine->regs.pc);
 
