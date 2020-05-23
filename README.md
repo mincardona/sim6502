@@ -11,7 +11,7 @@ LDA, LDX, LDY
 STA, STX, STY
 TAX, TAY, TXA, TYA, TSX, TXS
 PHA, PHP, PLA, PLP
-AND
+AND, EOR, ORA
 
 BCD math is not implemented and functions the same as binary math (i.e. the flag is ignored by arithmetic instructions).
 
