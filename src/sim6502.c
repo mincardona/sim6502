@@ -688,12 +688,9 @@ static int instr_impl_and(
     uint8_t arg = 0;
     int error = E6502_OK;
 
-    switch (instr->addr_mode) {
-    case ADM_IMMEDIATE:
+    if (instr->addr_mode == ADM_IMMEDIATE) {
         arg = instr->args[1];
-        break;
-    default:
-    {
+    } else {
         uint16_t arg_addr;
 
         error = m6502_compute_arg_address(machine, instr, &arg_addr);
@@ -702,7 +699,6 @@ static int instr_impl_and(
         }
 
         error = m6502_load_byte(machine, arg_addr, &arg);
-    }
     }
 
     if (!error) {
