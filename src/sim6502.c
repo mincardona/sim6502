@@ -727,6 +727,30 @@ INSTR_IMPL_BINBOOL_TEMPLATE(instr_impl_and, &=)
 INSTR_IMPL_BINBOOL_TEMPLATE(instr_impl_eor, ^=)
 INSTR_IMPL_BINBOOL_TEMPLATE(instr_impl_ora, |=)
 
+static int instr_impl_bit(
+    struct m6502_machine* machine,
+    const struct m6502_decoded_instr* instr)
+{
+    uint8_t arg = 0;
+    uint8_t res;
+    uint16_t arg_addr;
+
+    int error = m6502_compute_arg_address(machine, instr, &arg_addr);
+    if (error) {
+        return error;
+    }
+    error = m6502_load_byte(machine, arg_addr, &arg);
+
+    if (!error) {
+        res = machine->regs.a & arg;
+        machine->regs.p = flag_copy_8(machine->regs.p, M6502_FLAG_MASK_Z, !res);
+        machine->regs.p = flag_copy_8(machine->regs.p, M6502_FLAG_MASK_V, GETBIT(arg, 6));
+        machine->regs.p = flag_copy_8(machine->regs.p, M6502_FLAG_MASK_N, GETBIT(arg, 7));
+    }
+
+    return error;
+}
+
 static instr_function_t instr_jump_table[OPG_COUNT] = {
     instr_impl_lda, instr_impl_ldx, instr_impl_ldy,
     instr_impl_sta, instr_impl_stx, instr_impl_sty,
@@ -737,7 +761,7 @@ static instr_function_t instr_jump_table[OPG_COUNT] = {
     instr_impl_pha, instr_impl_php,
     instr_impl_pla, instr_impl_plp,
 
-    instr_impl_and, instr_impl_eor, instr_impl_ora, NULL,
+    instr_impl_and, instr_impl_eor, instr_impl_ora, instr_impl_bit,
     NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,

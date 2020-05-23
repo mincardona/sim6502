@@ -7,11 +7,11 @@ This simulator uses a plugin memory system, in which reads and writes to memory 
 
 Currently, the following instructions (and all of their associated addressing modes) are implemented:
 
-LDA, LDX, LDY
-STA, STX, STY
-TAX, TAY, TXA, TYA, TSX, TXS
-PHA, PHP, PLA, PLP
-AND, EOR, ORA
+LDA, LDX, LDY\
+STA, STX, STY\
+TAX, TAY, TXA, TYA, TSX, TXS\
+PHA, PHP, PLA, PLP\
+AND, EOR, ORA, BIT
 
 BCD math is not implemented and functions the same as binary math (i.e. the flag is ignored by arithmetic instructions).
 
