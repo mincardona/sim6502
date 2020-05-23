@@ -679,35 +679,39 @@ static int instr_impl_plp(
     return ret;
 }
 
-static int instr_impl_and(
-    struct m6502_machine* machine,
-    const struct m6502_decoded_instr* instr)
-{
-    /* TODO: BCD math */
 
-    uint8_t arg = 0;
-    int error = E6502_OK;
-
-    if (instr->addr_mode == ADM_IMMEDIATE) {
-        arg = instr->args[1];
-    } else {
-        uint16_t arg_addr;
-
-        error = m6502_compute_arg_address(machine, instr, &arg_addr);
-        if (error) {
-            return error;
-        }
-
-        error = m6502_load_byte(machine, arg_addr, &arg);
-    }
-
-    if (!error) {
-        machine->regs.a &= arg;
-        machine->regs.p = m6502_adjust_zn(machine->regs.p, machine->regs.a);
-    }
-
-    return error;
+/* macro for implementing binary boolean (AND, EOR, ORA) instructions succinctly */
+#define INSTR_IMPL_BINBOOL_TEMPLATE(NAME, OPERATOR) static int NAME( \
+    struct m6502_machine* machine, \
+    const struct m6502_decoded_instr* instr) \
+{ \
+    uint8_t arg = 0; \
+    int error = E6502_OK; \
+\
+    if (instr->addr_mode == ADM_IMMEDIATE) { \
+        arg = instr->args[1]; \
+    } else { \
+        uint16_t arg_addr; \
+\
+        error = m6502_compute_arg_address(machine, instr, &arg_addr); \
+        if (error) { \
+            return error; \
+        } \
+\
+        error = m6502_load_byte(machine, arg_addr, &arg); \
+    } \
+\
+    if (!error) { \
+        machine->regs.a OPERATOR arg; \
+        machine->regs.p = m6502_adjust_zn(machine->regs.p, machine->regs.a); \
+    } \
+\
+    return error; \
 }
+
+INSTR_IMPL_BINBOOL_TEMPLATE(instr_impl_and, &=)
+INSTR_IMPL_BINBOOL_TEMPLATE(instr_impl_eor, ^=)
+INSTR_IMPL_BINBOOL_TEMPLATE(instr_impl_ora, |=)
 
 static instr_function_t instr_jump_table[OPG_COUNT] = {
     instr_impl_lda, instr_impl_ldx, instr_impl_ldy,
@@ -719,7 +723,7 @@ static instr_function_t instr_jump_table[OPG_COUNT] = {
     instr_impl_pha, instr_impl_php,
     instr_impl_pla, instr_impl_plp,
 
-    instr_impl_and, NULL, NULL, NULL,
+    instr_impl_and, instr_impl_eor, instr_impl_ora, NULL,
     NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
