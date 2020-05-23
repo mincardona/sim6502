@@ -727,6 +727,8 @@ INSTR_IMPL_BINBOOL_TEMPLATE(instr_impl_and, &=)
 INSTR_IMPL_BINBOOL_TEMPLATE(instr_impl_eor, ^=)
 INSTR_IMPL_BINBOOL_TEMPLATE(instr_impl_ora, |=)
 
+#undef INSTR_IMPL_BITBOOL_TEMPLATE
+
 static int instr_impl_bit(
     struct m6502_machine* machine,
     const struct m6502_decoded_instr* instr)
