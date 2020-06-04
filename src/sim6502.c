@@ -720,6 +720,7 @@ static int instr_impl_plp(
         machine->regs.p = m6502_adjust_zn(machine->regs.p, machine->regs.a); \
     } \
 \
+    machine->regs.pc++; \
     return error; \
 }
 
@@ -750,6 +751,7 @@ static int instr_impl_bit(
         machine->regs.p = flag_copy_8(machine->regs.p, M6502_FLAG_MASK_N, GETBIT(arg, 7));
     }
 
+    machine->regs.pc++;
     return error;
 }
 
