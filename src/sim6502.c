@@ -703,7 +703,7 @@ static int instr_impl_plp(
     int error = E6502_OK; \
 \
     if (instr->addr_mode == ADM_IMMEDIATE) { \
-        arg = instr->args[1]; \
+        arg = instr->args[0]; \
     } else { \
         uint16_t arg_addr; \
 \
