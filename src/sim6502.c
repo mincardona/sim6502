@@ -48,7 +48,7 @@
 #define BYTE1(N) (((N) & 0xFF00) >> 8)
 
 /* Operations with the flag from N having mask M (M6502_FLAG_MASK_???) */
-#define GETFLAG(N, M) ((N) & (M) ? 1 : 0)
+#define GETFLAG(N, M) (((N) & (M)) ? 1 : 0)
 #define FLAG_SET(N, M) ((N) | (M))
 #define FLAG_CLEAR(N, M) ((N) & ~(M))
 
@@ -59,6 +59,12 @@
 static uint8_t flag_copy_8(uint8_t reg, uint8_t flag_mask, int do_set) {
     return do_set ? FLAG_SET(reg, flag_mask) : FLAG_CLEAR(reg, flag_mask);
 }
+
+/**
+ * Performs flag_copy_8 on an expression and assigns the result back to that
+ * expression. Shorthand for `N = flag_copy_8(N, M, B)`.
+ */
+#define FLAG_IMPORT_8(N, M, B) ((N) = (flag_copy_8((N), (M), (B))))
 
 /**
  * Computes the page on which the given memory address resides.
@@ -746,9 +752,44 @@ static int instr_impl_bit(
 
     if (!error) {
         res = machine->regs.a & arg;
-        machine->regs.p = flag_copy_8(machine->regs.p, M6502_FLAG_MASK_Z, !res);
-        machine->regs.p = flag_copy_8(machine->regs.p, M6502_FLAG_MASK_V, GETBIT(arg, 6));
-        machine->regs.p = flag_copy_8(machine->regs.p, M6502_FLAG_MASK_N, GETBIT(arg, 7));
+        FLAG_IMPORT_8(machine->regs.p, M6502_FLAG_MASK_Z, !res);
+        FLAG_IMPORT_8(machine->regs.p, M6502_FLAG_MASK_V, GETBIT(arg, 6));
+        FLAG_IMPORT_8(machine->regs.p, M6502_FLAG_MASK_N, GETBIT(arg, 7));
+    }
+
+    machine->regs.pc++;
+    return error;
+}
+
+
+static int instr_impl_adc(
+    struct m6502_machine* machine,
+    const struct m6502_decoded_instr* instr)
+{
+    /* TODO: BCD support */
+
+    uint8_t arg;
+    int error;
+
+    if (instr->addr_mode == ADM_IMMEDIATE) {
+        arg = instr->args[0];
+    } else {
+        uint16_t arg_addr;
+        error = m6502_compute_arg_address(machine, instr, &arg_addr);
+        if (error) {
+            return error;
+        }
+        error = m6502_load_byte(machine, arg_addr, &arg);
+    }
+
+    if (!error) {
+        uint8_t old_a = machine->regs.a;
+        machine->regs.a += arg + GETBIT(
+            machine->regs.p,
+            GETFLAG(machine->regs.p, M6502_FLAG_MASK_C)
+        );
+        /* if result is less than old a, overflow occurred */
+        FLAG_IMPORT_8(machine->regs.p, M6502_FLAG_MASK_C, machine->regs.a < old_a);
     }
 
     machine->regs.pc++;
@@ -766,7 +807,8 @@ static instr_function_t instr_jump_table[OPG_COUNT] = {
     instr_impl_pla, instr_impl_plp,
 
     instr_impl_and, instr_impl_eor, instr_impl_ora, instr_impl_bit,
-    NULL, NULL, NULL, NULL, NULL,
+
+    instr_impl_adc, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL,
