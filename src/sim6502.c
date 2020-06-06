@@ -783,13 +783,16 @@ static int instr_impl_adc(
     }
 
     if (!error) {
-        uint8_t old_a = machine->regs.a;
-        machine->regs.a += arg + GETBIT(
+        uint16_t sum = machine->regs.a + arg + GETBIT(
             machine->regs.p,
             GETFLAG(machine->regs.p, M6502_FLAG_MASK_C)
         );
-        /* if result is less than old a, overflow occurred */
-        FLAG_IMPORT_8(machine->regs.p, M6502_FLAG_MASK_C, machine->regs.a < old_a);
+        /* wraparound and set carry flag on overflow */
+        if (sum > 0xFF) {
+            FLAG_IMPORT_8(machine->regs.p, M6502_FLAG_MASK_C, 1);
+            sum %= 256;
+        }
+        machine->regs.a = (uint8_t)sum;
     }
 
     machine->regs.pc++;
