@@ -49,15 +49,15 @@
 
 /* Operations with the flag from N having mask M (M6502_FLAG_MASK_???) */
 #define GETFLAG(N, M) (((N) & (M)) ? 1 : 0)
-#define FLAG_SET(N, M) ((N) | (M))
-#define FLAG_CLEAR(N, M) ((N) & ~(M))
+#define SETFLAG(N, M) ((N) | (M))
+#define CLEARFLAG(N, M) ((N) & ~(M))
 
 /**
  * Sets (1) or clears (0) the flag identified by flag_mask (M6502_FLAG_MASK_???)
  * based on whether do_set is truthy.
  */
 static uint8_t flag_copy_8(uint8_t reg, uint8_t flag_mask, int do_set) {
-    return do_set ? FLAG_SET(reg, flag_mask) : FLAG_CLEAR(reg, flag_mask);
+    return do_set ? SETFLAG(reg, flag_mask) : CLEARFLAG(reg, flag_mask);
 }
 
 /**
@@ -475,15 +475,15 @@ static uint8_t m6502_adjust_zn(uint8_t old_flags, uint8_t test_value) {
     uint8_t new_flags = old_flags;
 
     if (test_value == 0) {
-        new_flags = FLAG_SET(new_flags, M6502_FLAG_MASK_Z);
+        new_flags = SETFLAG(new_flags, M6502_FLAG_MASK_Z);
     } else {
-        new_flags = FLAG_CLEAR(new_flags, M6502_FLAG_MASK_Z);
+        new_flags = CLEARFLAG(new_flags, M6502_FLAG_MASK_Z);
     }
 
     if (GETBIT(test_value, 7)) {
-        new_flags = FLAG_SET(new_flags, M6502_FLAG_MASK_N);
+        new_flags = SETFLAG(new_flags, M6502_FLAG_MASK_N);
     } else {
-        new_flags = FLAG_CLEAR(new_flags, M6502_FLAG_MASK_N);
+        new_flags = CLEARFLAG(new_flags, M6502_FLAG_MASK_N);
     }
 
     return new_flags;
